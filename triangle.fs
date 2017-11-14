@@ -47,6 +47,39 @@ struct primitive {
 //global background color declaration
 vec3 background = vec3(0.75,0.8,0.95);
 
+vec4 xyzToQuat(vec3 a, float theta){
+  vec4 quaternion;
+  float angle = theta/2.0;
+  angle = angle * PI / 180.0;
+  quaternion.x = a.x * sin(angle);
+  quaternion.y = a.y * sin(angle);
+  quaternion.z = a.z * sin(angle);
+  quaternion.w = cos(angle);
+  return quaternion;
+}
+
+//order matters!!
+vec4 quaternionMult(vec4 quat1, vec4 quat2){
+  vec4 result;
+  result.x = (quat1.w * quat2.x) + (quat1.x * quat2.w) + (quat1.y * quat2.z) - (quat1.z * quat2.y);
+  result.y = (quat1.w * quat2.y) - (quat1.x * quat2.z) + (quat1.y * quat2.w) + (quat1.z * quat2.x);
+  result.z = (quat1.w * quat2.z) + (quat1.x * quat2.y) - (quat1.y * quat2.x) + (quat1.z * quat2.w);
+  result.w = (quat1.w * quat2.w) - (quat1.x * quat2.x) - (quat1.y * quat2.y) - (quat1.z * quat2.z);
+  return result;
+}
+
+vec3 quaternionRotate(vec3 pt, vec3 a, float theta){
+  vec4 rotationQuat = xyzToQuat(a,theta);
+  vec4 inverse = vec4(-1.0*rotationQuat.x,-1.0*rotationQuat.y,-1.0*rotationQuat.z,rotationQuat.w);
+  vec4 qpt = vec4(pt.x,pt.y,pt.z,0.0);
+
+  vec4 qp = quaternionMult(rotationQuat,qpt);
+  vec4 pPrime = quaternionMult(qp,inverse);
+
+  return vec3(pPrime.x,pPrime.y,pPrime.z);
+}
+
+
 /*
     primitive for creating a box. The dimensions are reflected from the 1st
     quadrant to create the box.
@@ -76,7 +109,8 @@ float un(float d1, float d2) {
 
 float sceneSDF(vec3 pt) {
     float floor = sdBox(pt-vec3(0,-2.0,0), vec3(2.0,0.0,2.0));
-    float torus = sdTorus(pt,vec2(3.0,0.5));
+    //float torus = sdTorus(pt,vec2(3.0,0.5));
+    float torus = sdTorus(quaternionRotate(pt,vec3(1,0,0),u_time),vec2(3.0,0.5));
 
 
     float value = un(floor, torus);
@@ -296,6 +330,7 @@ mat3 setCamera(vec3 eye, vec3 center, float rotation) {
     vec3 up = normalize(cross(left, forward));
     return mat3(left,up,forward);
 }
+
 
 
 //main begin
